@@ -111,5 +111,5 @@ async def get_hubspot_credentials_integration(
 
 
 @app.post("/integrations/hubspot/get_hubspot_items")
-async def load_slack_data_integration(credentials: str = Form(...)):
+async def load_hubspot_data_integration(credentials: str = Form(...)):
     return await get_items_hubspot(credentials)

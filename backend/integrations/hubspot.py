@@ -113,7 +113,20 @@ async def oauth2callback_hubspot(request: Request):
     return HTMLResponse(content=close_window_script)
 
 
+async def get_hubspot_credentials(user_id, org_id):
+    # 1. Get stored credentials
+    credentials = await get_value_redis(f"hubspot_credentials:{org_id}:{user_id}")
 
+    if not credentials:
+        raise HTTPException(status_code=400, detail="No credentials found.")
+
+    credentials = json.loads(credentials)
+
+    # 2. Delete credentials from Redis after retrieving
+    await delete_key_redis(f"hubspot_credentials:{org_id}:{user_id}")
+
+    # 3. Return credentials to the caller
+    return credentials
 
 
 async def create_integration_item_metadata_object(response_json):
