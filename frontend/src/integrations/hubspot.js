@@ -1,10 +1,13 @@
+// hubspot.js
+
+// TODO
 // airtable.js
 
 import { useState, useEffect } from "react";
 import { Box, Button, CircularProgress } from "@mui/material";
 import axios from "axios";
 
-export const AirtableIntegration = ({
+export const HubSpotIntegration = ({
   user,
   org,
   integrationParams,
@@ -21,14 +24,14 @@ export const AirtableIntegration = ({
       formData.append("user_id", user);
       formData.append("org_id", org);
       const response = await axios.post(
-        `http://localhost:8000/integrations/airtable/authorize`,
+        `http://localhost:8000/integrations/hubspot/authorize`,
         formData,
       );
       const authURL = response?.data;
 
       const newWindow = window.open(
         authURL,
-        "Airtable Authorization",
+        "HubSpot Authorization",
         "width=600, height=600",
       );
 
@@ -52,7 +55,7 @@ export const AirtableIntegration = ({
       formData.append("user_id", user);
       formData.append("org_id", org);
       const response = await axios.post(
-        `http://localhost:8000/integrations/airtable/credentials`,
+        `http://localhost:8000/integrations/hubspot/credentials`,
         formData,
       );
       const credentials = response.data;
@@ -62,7 +65,7 @@ export const AirtableIntegration = ({
         setIntegrationParams((prev) => ({
           ...prev,
           credentials: credentials,
-          type: "Airtable",
+          type: "HubSpot",
         }));
       }
       setIsConnecting(false);
@@ -98,11 +101,11 @@ export const AirtableIntegration = ({
             }}
           >
             {isConnected ? (
-              "Airtable Connected"
+              "HubSpot Connected"
             ) : isConnecting ? (
               <CircularProgress size={20} />
             ) : (
-              "Connect to Airtable"
+              "Connect to HubSpot"
             )}
           </Button>
         </Box>

@@ -1,4 +1,4 @@
-import { IntegrationForm } from './integration-form';
+import { IntegrationForm } from "./integration-form";
 
 function App() {
   return (
