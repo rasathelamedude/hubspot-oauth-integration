@@ -6,6 +6,7 @@ import json
 import secrets
 
 from fastapi.responses import HTMLResponse
+from backend.integrations.integration_item import IntegrationItem
 from backend.redis_client import add_key_value_redis, delete_key_redis, get_value_redis
 from fastapi import HTTPException, Path, Request
 import httpx
@@ -129,11 +130,66 @@ async def get_hubspot_credentials(user_id, org_id):
     return credentials
 
 
-async def create_integration_item_metadata_object(response_json):
-    # TODO
-    pass
+async def create_integration_item_metadata_object(response_json_item, item_type):
+    item_id = response_json_item.get("id")
+
+    if item_type == "contact":
+        item_name = (
+            response_json_item.get("properties", {}).get("firstname", "")
+            + " "
+            + response_json_item.get("properties", {}).get("lastname", "")
+        )
+    else:
+        item_name = response_json_item.get("properties", {}).get("name", "")
+
+    integration_metadata = IntegrationItem(
+        id=item_id,
+        type=item_type,
+        name=item_name,
+    )
+
+    return integration_metadata
 
 
 async def get_items_hubspot(credentials):
-    # TODO
-    pass
+    # Fetch user items from HubSpot using the stored credentials
+    credentials = json.loads(credentials)
+    access_token = credentials.get("access_token")
+
+    hubspot_endpoints = [
+        "https://api.hubapi.com/crm/v3/objects/contacts",
+        "https://api.hubapi.com/crm/v3/objects/companies",
+        "https://api.hubapi.com/crm/v3/objects/deals",
+    ]
+
+    item_types = ["contact", "company", "deal"]
+
+    async with httpx.AsyncClient() as client:
+        tasks = [
+            client.get(endpoint, headers={"Authorization": f"Bearer {access_token}"})
+            for endpoint in hubspot_endpoints
+        ]  # A list of requests that haven't run yet
+
+        # List of raw http responses
+        responses = await asyncio.gather(*tasks)
+
+    # List of python dicts containing the actual data of https responses
+    responses_json = [
+        response.json() for response in responses if response.status_code == 200
+    ]
+
+    list_of_integration_item_metadata = []
+    for response_json, item_type in zip(responses_json, item_types):
+        # Skip if the response is not successful
+        if response_json.status_code != 200:
+            continue
+
+        # Create an IntegrationItem for each item in the response
+        for item in response_json.get("results", []):
+            item_metadata = await create_integration_item_metadata_object(
+                item, item_type
+            )
+            list_of_integration_item_metadata.append(item_metadata)
+
+    # Return the list of IntegrationItem objects to the caller
+    return list_of_integration_item_metadata
