@@ -6,9 +6,10 @@ import json
 import secrets
 
 from fastapi.responses import HTMLResponse
-from backend.integrations.integration_item import IntegrationItem
-from backend.redis_client import add_key_value_redis, delete_key_redis, get_value_redis
-from fastapi import HTTPException, Path, Request
+from integrations.integration_item import IntegrationItem
+from redis_client import add_key_value_redis, delete_key_redis, get_value_redis
+from fastapi import HTTPException, Request
+from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 import os
@@ -72,18 +73,15 @@ async def oauth2callback_hubspot(request: Request):
     token_url = "https://api.hubapi.com/oauth/v1/token"
 
     async with httpx.AsyncClient() as client:
-        response = await asyncio.gather(
+        response, _ = await asyncio.gather(
             client.post(
-                "https://api.hubapi.com/oauth/v1/token",
-                json={
+                token_url,
+                data={
                     "grant_type": "authorization_code",
                     "code": code,
                     "redirect_uri": REDIRECT_URI,
                     "client_id": CLIENT_ID,
                     "client_secret": CLIENT_SECRET,
-                },
-                headers={
-                    "Content-Type": "application/json",
                 },
             ),
             delete_key_redis(f"hubspot_state:{org_id}:{user_id}"),
@@ -142,13 +140,11 @@ async def create_integration_item_metadata_object(response_json_item, item_type)
     else:
         item_name = response_json_item.get("properties", {}).get("name", "")
 
-    integration_metadata = IntegrationItem(
-        id=item_id,
-        type=item_type,
-        name=item_name,
-    )
-
-    return integration_metadata
+    return {
+        "id": item_id,
+        "type": item_type,
+        "name": item_name,
+    }
 
 
 async def get_items_hubspot(credentials):
@@ -180,10 +176,6 @@ async def get_items_hubspot(credentials):
 
     list_of_integration_item_metadata = []
     for response_json, item_type in zip(responses_json, item_types):
-        # Skip if the response is not successful
-        if response_json.status_code != 200:
-            continue
-
         # Create an IntegrationItem for each item in the response
         for item in response_json.get("results", []):
             item_metadata = await create_integration_item_metadata_object(
@@ -191,5 +183,8 @@ async def get_items_hubspot(credentials):
             )
             list_of_integration_item_metadata.append(item_metadata)
 
+    print(
+        f"Items found: {[(item['id'], item['name'], item['type']) for item in list_of_integration_item_metadata]}"
+    )
     # Return the list of IntegrationItem objects to the caller
     return list_of_integration_item_metadata

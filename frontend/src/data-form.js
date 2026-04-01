@@ -21,7 +21,7 @@ export const DataForm = ({ integrationType, credentials }) => {
         formData,
       );
       const data = response.data;
-      setLoadedData(data);
+      setLoadedData(JSON.stringify(data, null, 2));
     } catch (e) {
       alert(e?.response?.data?.detail);
     }
